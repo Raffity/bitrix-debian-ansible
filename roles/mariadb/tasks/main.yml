@@ -1,0 +1,73 @@
+---
+- name: Install prerequisites for MariaDB repository
+  apt:
+    name:
+      - software-properties-common
+      - dirmngr
+      - gnupg
+      - apt-transport-https
+      - python3-pymysql
+      - python3-pexpect
+    state: present
+    update_cache: yes
+
+- name: Add MariaDB GPG key
+  apt_key:
+    url: https://mariadb.org/mariadb_release_signing_key.asc
+    state: present
+
+- name: Add MariaDB {{ mariadb_version }} repository
+  apt_repository:
+    repo: "deb [arch=amd64] https://mirror.yandex.ru/mirrors/mariadb/mariadb-{{ mariadb_version }}/repo/{{ ansible_distribution | lower }}/ {{ ansible_lsb.codename }} main"
+    filename: mariadb
+    state: present
+
+- name: Update apt cache after adding MariaDB repo
+  apt:
+    update_cache: yes
+
+- name: Install MariaDB server and client
+  apt:
+    name:
+      - mariadb-server
+      - mariadb-client
+    state: present
+
+- name: Ensure MariaDB is started and enabled
+  systemd:
+    name: mariadb
+    enabled: yes
+    state: started
+
+- name: Secure installation using mysql_secure_installation
+  ansible.builtin.expect:
+    command: mysql_secure_installation
+    responses:
+      "Enter current password for root.*": "\n"
+      "Set root password.*": "Y\n"
+      "New password:": "{{ mysql_root_password }}\n"
+      "Re-enter new password:": "{{ mysql_root_password }}\n"
+      "Remove anonymous users.*": "Y\n"
+      "Disallow root login remotely.*": "Y\n"
+      "Remove test database and access to it.*": "Y\n"
+      "Reload privilege tables now.*": "Y\n"
+      "Switch to unix_socket authentication.*": "n\n"
+      "Change the root password\\? \\[Y/n\\]": "Y\n"
+    timeout: 30
+
+- name: Create Bitrix database
+  mysql_db:
+    name: "{{ bitrix_db_name }}"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+
+- name: Create Bitrix DB user
+  mysql_user:
+    name: "{{ bitrix_db_user }}"
+    password: "{{ bitrix_db_password }}"
+    priv: "{{ bitrix_db_name }}.*:ALL"
+    host: "%"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"

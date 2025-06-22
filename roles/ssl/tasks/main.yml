@@ -1,0 +1,33 @@
+- name: Install Certbot
+  apt:
+    name:
+    - certbot
+    - python3-certbot-nginx
+    state: present
+    update_cache: yes
+
+- name: Obtain SSL certificate via Certbot CLI
+  command: >
+    certbot certonly --non-interactive --agree-tos --email {{ certbot_email }} --webroot -w {{ site_dir }} -d {{ domain_name }}
+
+- name: Test Nginx configuration syntax
+  command: nginx -t
+  register: nginx_test
+  ignore_errors: yes
+
+- name: Fail if Nginx config is invalid
+  fail:
+    msg: "Nginx configuration test failed: {{ nginx_test.stderr }}"
+  when: nginx_test.rc != 0
+
+- name: Configure Nginx for SSL (reload configuration)
+  systemd:
+    name: nginx
+    state: reloaded
+
+- name: Schedule certbot renewal cron job
+  cron:
+    name: "Certbot automatic renewal"
+    job: "0 3 * * * certbot renew --quiet --post-hook 'systemctl reload nginx'"
+    user: root
+    state: present

@@ -1,0 +1,27 @@
+- name: Bitrix server provisioning
+  hosts: bitrix
+  become: yes
+  vars:
+    bx_user: bitrix
+    bx_group: bitrix
+    site_dir: /var/www/html/bx-site
+    php_version: "8.3"
+    php_ini_file: zbx-bitrix.ini
+    mariadb_version: "11.8.2"
+    mysql_root_password: MyRootPassword123
+    bitrix_db_name: bitrix
+    bitrix_db_user: bitrix
+    bitrix_db_password: MyBitrixPassword123
+    certbot_email: admin@admin.ru
+    domain_name: local.local
+
+
+  roles:
+    - common
+    - bitrix
+    - php
+    - nginx
+    - apache
+    - mariadb
+    - docker
+    - ssl

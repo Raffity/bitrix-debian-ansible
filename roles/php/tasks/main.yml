@@ -1,0 +1,64 @@
+- name: Install software-properties-common
+  apt:
+    name: software-properties-common
+    state: present
+    update_cache: yes
+
+- name: Download Sury PHP GPG key
+  get_url:
+    url: https://mirror.yandex.ru/mirrors/packages.sury.org/php/apt.gpg
+    dest: /etc/apt/trusted.gpg.d/php.gpg
+    mode: '0644'
+
+- name: Add Sury PHP repository
+  apt_repository:
+    repo: "deb https://mirror.yandex.ru/mirrors/packages.sury.org/php/ {{ ansible_lsb.codename }} main"
+    filename: sury-php
+    state: present
+
+- name: Update apt cache after adding Sury repo
+  apt:
+    update_cache: yes
+
+- name: Install PHP and modules
+  apt:
+    name:
+      - php{{ php_version }}
+      - php{{ php_version }}-cli
+      - php{{ php_version }}-common
+      - php{{ php_version }}-dev
+      - php{{ php_version }}-gd
+      - php{{ php_version }}-imap
+      - php{{ php_version }}-ldap
+      - php{{ php_version }}-mbstring
+      - php{{ php_version }}-mysql
+      - php{{ php_version }}-opcache
+      - php{{ php_version }}-pspell
+      - php{{ php_version }}-xml
+      - php{{ php_version }}-zip
+      - php{{ php_version }}-amqp
+      - php{{ php_version }}-apcu
+      - php-pear
+    state: present
+
+- name: Download and extract PHP configs
+  block:
+    - command: rsync -av /opt/debian/php.d/ /etc/php/{{ php_version }}/mods-available/
+
+- name: Link Bitrix PHP .ini into apache2 and cli
+  file:
+    src: "/etc/php/{{ php_version }}/mods-available/{{ php_ini_file }}"
+    dest: "/etc/php/{{ php_version }}/{{ item }}/conf.d/99-bitrix.ini"
+    state: link
+    force: yes
+  loop:
+    - apache2
+    - cli
+
+- name: Ensure PHP log directory
+  file:
+    path: /var/log/php
+    state: directory
+    owner: "{{ bx_user }}"
+    group: "{{ bx_group }}"
+    mode: '0755'

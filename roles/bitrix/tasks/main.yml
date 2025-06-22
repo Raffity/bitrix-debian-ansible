@@ -1,0 +1,16 @@
+---
+- name: Create site directory
+  file:
+    path: "{{ site_dir }}"
+    state: directory
+    owner: "{{ bx_user }}"
+    group: "{{ bx_group }}"
+    mode: '0755'
+
+- name: Download BitrixSetup script
+  get_url:
+    url: https://www.1c-bitrix.ru/download/scripts/bitrixsetup.php
+    dest: "{{ site_dir }}/bitrixsetup.php"
+    owner: "{{ bx_user }}"
+    group: "{{ bx_group }}"
+    mode: '0644'

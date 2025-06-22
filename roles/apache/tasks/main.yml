@@ -1,0 +1,32 @@
+---
+- name: Install Apache2 package
+  apt:
+    name: apache2
+    state: present
+    update_cache: yes
+
+- name: Sync Apache config
+  block:
+    - command: rsync -av /opt/debian/apache2/ /etc/apache2/
+
+- name: Disable autoindex and enable modules
+  command: '{{ item }}'
+  loop:
+    - 'a2dismod --force autoindex'
+    - 'a2enmod rewrite'
+    - 'a2enmod php{{ php_version }}'
+
+- name: Configure Apache run user/group
+  lineinfile:
+    path: /etc/apache2/envvars
+    regexp: '^export APACHE_RUN_{{ item.param }}'
+    line: "export APACHE_RUN_{{ item.param|upper }}={{ bx_user if item.param=='user' else bx_group }}"
+  loop:
+    - { param: user }
+    - { param: group }
+
+- name: Ensure Apache is enabled and started
+  systemd:
+    name: apache2
+    enabled: yes
+    state: started

@@ -1,0 +1,82 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Upgrade all packages to latest
+  apt:
+    upgrade: dist
+
+- name: Stop Apache if running
+  service:
+    name: apache2
+    state: stopped
+  ignore_errors: yes
+
+- name: Stop Nginx if running
+  service:
+    name: nginx
+    state: stopped
+  ignore_errors: yes
+
+- name: Update apt cache and install base packages
+  apt:
+    update_cache: yes
+    name:
+      - unzip
+      - wget
+      - rsync
+      - vim
+      - htop
+      - cron
+      - net-tools
+      - software-properties-common
+    state: present
+
+- name: Ensure group {{ bx_group }} exists
+  group:
+    name: "{{ bx_group }}"
+    state: present
+
+- name: Create {{ bx_user }} if not exists
+  user:
+    name: "{{ bx_user }}"
+    group: "{{ bx_group }}"
+    groups: www-data
+    append: yes
+    create_home: yes
+
+- name: Download configs
+  block:
+    - get_url:
+        url: https://dev.1c-bitrix.ru/docs/chm_files/debian.zip
+        dest: /opt/debian.zip
+    - unarchive:
+        src: /opt/debian.zip
+        dest: /opt
+        remote_src: yes
+
+- name: Install fail2ban
+  apt:
+    name: fail2ban
+    state: present
+    update_cache: yes
+
+- name: Install fail2ban
+  apt:
+    name: fail2ban
+    state: present
+    update_cache: yes
+
+- name: Configure fail2ban to limit SSH attempts
+  copy:
+    dest: /etc/fail2ban/jail.d/ssh.conf
+    content: |
+      [sshd]
+      enabled = true
+      port = ssh
+      filter = sshd
+      logpath = /var/log/auth.log
+      maxretry = 5
+      bantime = 600
+  notify: Restart fail2ban

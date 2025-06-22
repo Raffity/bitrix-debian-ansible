@@ -1,0 +1,43 @@
+- name: Install Nginx package
+  apt:
+    name: nginx
+    state: present
+    update_cache: yes
+
+- name: Sync Nginx config
+  command: rsync -av /opt/debian/nginx/ /etc/nginx/
+
+- name: Set Nginx run user
+  lineinfile:
+    path: /etc/nginx/nginx.conf
+    regexp: '^user '
+    line: "user {{ bx_user }};"
+
+- name: Add host entries for upstreams
+  lineinfile:
+    path: /etc/hosts
+    line: '127.0.0.1 push httpd'
+    create: yes
+
+- name: Stop Apache if running before starting Nginx
+  service:
+    name: apache2
+    state: stopped
+  ignore_errors: yes
+
+
+- name: Test Nginx configuration syntax
+  command: nginx -t
+  register: nginx_test
+  ignore_errors: yes
+
+- name: Fail if Nginx config is invalid
+  fail:
+    msg: "Nginx configuration test failed: {{ nginx_test.stderr }}"
+  when: nginx_test.rc != 0
+
+- name: Ensure Nginx service is enabled and started
+  systemd:
+    name: nginx
+    enabled: yes
+    state: started
